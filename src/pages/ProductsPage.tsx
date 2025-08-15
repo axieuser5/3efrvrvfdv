@@ -69,18 +69,49 @@ export function ProductsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 max-w-5xl mx-auto">
           {createStripeProducts(productConfig).map((product) => {
-            // Enhanced current plan detection
-            const isCurrentPlan = (
-              // Direct price ID match with active subscription
-              (subscription?.price_id === product.priceId && 
-               (subscription?.subscription_status === 'active' || subscription?.subscription_status === 'trialing')) ||
-              // Standard plan detection (no subscription or paused)
-              (product.id === 'standard_product' && 
-               (!subscription?.subscription_status || subscription?.subscription_status === 'canceled' || !subscription?.price_id)) ||
-              // Admin override for Pro plan
-              (product.priceId === 'price_1Rv4rDBacFXEnBmNDMrhMqOH' && 
-               (accessStatus?.access_type === 'paid_subscription' || isPaidUser))
-            );
+            // 🎯 BULLETPROOF CURRENT PLAN DETECTION
+            const isCurrentPlan = (() => {
+              // CASE 1: Super Admin always has Pro access
+              if (isSuperAdmin(user?.id || '') && product.priceId === 'price_1Rv4rDBacFXEnBmNDMrhMqOH') {
+                return true;
+              }
+
+              // CASE 2: Standard tier detection
+              if (product.id === 'standard_product') {
+                // Super admin never shows Standard as current
+                if (isSuperAdmin(user?.id || '')) {
+                  return false;
+                }
+
+                // User is on Standard if:
+                // - No active subscription AND not trialing
+                // - Cancelled subscription (will become Standard at period end)
+                // - Explicitly switched to Standard tier
+                return (
+                  !subscription?.subscription_id || // No Stripe subscription
+                  subscription?.subscription_status === 'canceled' || // Cancelled
+                  subscription?.subscription_status === null || // No status
+                  subscription?.cancel_at_period_end === true || // Cancelled but still active
+                  (!isPaidUser && !isTrialing && !isFreeTrialing) // No access
+                );
+              }
+
+              // CASE 3: Active paid subscription match
+              if (subscription?.price_id === product.priceId) {
+                return (
+                  (subscription?.subscription_status === 'active' && !subscription?.cancel_at_period_end) ||
+                  subscription?.subscription_status === 'trialing'
+                );
+              }
+
+              // CASE 4: Team subscription detection
+              if (subscription?.is_team_member &&
+                  ['price_1RwOhVBacFXEnBmNIeWQ1wQe', 'price_1RwP9cBacFXEnBmNsM3xVLL2'].includes(product.priceId)) {
+                return true;
+              }
+
+              return false;
+            })();
 
             return (
               <ProductCard

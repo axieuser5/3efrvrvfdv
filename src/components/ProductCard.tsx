@@ -11,10 +11,11 @@ interface ProductCardProps {
 
 export function ProductCard({ product, isCurrentPlan = false }: ProductCardProps) {
   const [loading, setLoading] = useState(false);
-  const { refetch: refetchAccess } = useUserAccess();
+  const { refetch: refetchAccess, isPaidUser, isTrialing, isFreeTrialing } = useUserAccess();
 
   const isStandardProduct = product.id === 'standard_product' || product.name === 'Standard';
   const isLimitedTimeProduct = product.name === 'Limited Time';
+  const isProProduct = product.priceId === 'price_1Rv4rDBacFXEnBmNDMrhMqOH';
 
   const cardColor = isStandardProduct ? 'border-green-600' :
                    isLimitedTimeProduct ? 'border-purple-600' : 'border-black';
@@ -262,9 +263,21 @@ export function ProductCard({ product, isCurrentPlan = false }: ProductCardProps
               PROCESSING...
             </div>
           ) : isCurrentPlan ? (
-            isStandardProduct ? 'CURRENT PLAN' : 'CURRENT PLAN'
+            'CURRENT PLAN'
           ) : (
-            isStandardProduct ? 'PAUSE SUBSCRIPTION' : `GET ${product.name.toUpperCase()}`
+            (() => {
+              if (isStandardProduct) {
+                // For Standard tier, show different text based on user state
+                if (isPaidUser || isTrialing) {
+                  return 'SWITCH TO STANDARD';
+                } else {
+                  return 'CURRENT PLAN'; // Already on Standard
+                }
+              } else {
+                // For paid tiers
+                return `GET ${product.name.toUpperCase()}`;
+              }
+            })()
           )}
         </button>
       </div>
