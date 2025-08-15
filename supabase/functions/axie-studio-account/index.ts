@@ -470,6 +470,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Handle deactivate action (same as delete - deactivates the account)
+    if (req.method === 'POST' && action === 'deactivate') {
+      await deleteAxieStudioUser(user.email!);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Axie Studio account deactivated (data preserved)' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 🚨 NEW ENDPOINT: Reactivate AxieStudio account
     if (req.method === 'POST' && action === 'reactivate') {
       await reactivateAxieStudioUser(user.email!);
